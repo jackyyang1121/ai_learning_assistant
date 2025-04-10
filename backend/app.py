@@ -101,6 +101,7 @@ def generate_learning_plan(form_data):
         logger.error(f"OpenAI API failed: {str(e)}")
         return f"生成失敗，OpenAI API 錯誤：{str(e)}"
 
+#
 # 優化後的講義生成函數
 def generate_lecture(plan_id, section):
     plan = LearningPlan.query.get(plan_id)
