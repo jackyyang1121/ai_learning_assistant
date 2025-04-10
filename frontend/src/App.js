@@ -465,7 +465,7 @@ const RegisterPage = ({ setView, handleRegister, loading }) => (
 
 // 主應用組件
 const App = () => {
-    const [view, setView] = useState('dashboard'); // 預設進入儀表板
+    const [view, setView] = useState('login'); // 預設進入儀表板
     const [plan, setPlan] = useState(null);
     const [progress, setProgress] = useState([]);
     const [authLoading, setAuthLoading] = useState(false);
