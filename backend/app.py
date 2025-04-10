@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
@@ -31,6 +31,7 @@ class User(db.Model):
 
 class LearningPlan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     goal = db.Column(db.String(200), nullable=False)
     plan = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.now())
@@ -46,6 +47,15 @@ class Lecture(db.Model):
 import openai
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai.api_key = OPENAI_API_KEY
+
+# 檢查登入狀態的裝飾器
+def login_required(f):
+    def wrapper(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'message': '請先登入'}), 401
+        return f(*args, **kwargs)
+    wrapper.__name__ = f.__name__
+    return wrapper
 
 # 優化後的學習計畫生成函數
 def generate_learning_plan(form_data):
@@ -101,7 +111,6 @@ def generate_learning_plan(form_data):
         logger.error(f"OpenAI API failed: {str(e)}")
         return f"生成失敗，OpenAI API 錯誤：{str(e)}"
 
-#
 # 優化後的講義生成函數
 def generate_lecture(plan_id, section):
     plan = LearningPlan.query.get(plan_id)
@@ -160,14 +169,18 @@ def login():
     password = data.get('password')
     user = User.query.filter_by(username=username).first()
     if user and check_password_hash(user.password, password):
+        session['user_id'] = user.id
+        logger.info(f"User {username} logged in with ID: {user.id}")
         return jsonify({'message': '登入成功'}), 200
     return jsonify({'message': '登入失敗'}), 401
 
 @app.route('/logout', methods=['POST'])
 def logout():
+    session.pop('user_id', None)
     return jsonify({'message': '登出成功'}), 200
 
 @app.route('/generate_plan', methods=['POST'])
+@login_required
 def generate_plan():
     data = request.get_json()
     if not data or 'goal' not in data:
@@ -175,26 +188,32 @@ def generate_plan():
     plan = generate_learning_plan(data)
     if plan.startswith("生成失敗"):
         return jsonify({'message': plan}), 500
-    new_plan = LearningPlan(goal=data['goal'], plan=plan)
+    new_plan = LearningPlan(user_id=session['user_id'], goal=data['goal'], plan=plan)
     db.session.add(new_plan)
     db.session.commit()
-    logger.info(f"Plan created with ID: {new_plan.id}")
+    logger.info(f"Plan created with ID: {new_plan.id} for user: {session['user_id']}")
     return jsonify({'plan': plan, 'plan_id': new_plan.id}), 200
 
 @app.route('/learning_progress', methods=['GET'])
+@login_required
 def learning_progress():
-    plans = LearningPlan.query.all()
-    logger.info(f"Returning {len(plans)} plans")
+    plans = LearningPlan.query.filter_by(user_id=session['user_id']).all()
+    logger.info(f"Returning {len(plans)} plans for user {session['user_id']}")
     return jsonify([{'id': p.id, 'goal': p.goal, 'plan': p.plan, 'created_at': str(p.created_at)} for p in plans]), 200
 
 @app.route('/generate_lecture', methods=['POST'])
+@login_required
 def generate_lecture_route():
     data = request.get_json()
     plan_id = data.get('plan_id')
     section = data.get('section')
+    logger.info(f"Received request to generate lecture for plan_id: {plan_id}, section: {section}")
     if not plan_id or not section:
         logger.error("Missing plan_id or section in request")
         return jsonify({'message': '缺少 plan_id 或 section'}), 400
+    plan = LearningPlan.query.get(plan_id)
+    if not plan or plan.user_id != session['user_id']:
+        return jsonify({'message': '無權訪問此計劃'}), 403
     lecture_content = generate_lecture(plan_id, section)
     if lecture_content.startswith("生成失敗"):
         return jsonify({'message': lecture_content}), 500
@@ -205,12 +224,17 @@ def generate_lecture_route():
     return jsonify({'lecture': lecture_content, 'id': new_lecture.id}), 200
 
 @app.route('/lectures/<int:plan_id>', methods=['GET'])
+@login_required
 def get_lectures(plan_id):
+    plan = LearningPlan.query.get(plan_id)
+    if not plan or plan.user_id != session['user_id']:
+        return jsonify({'message': '無權訪問此計劃'}), 403
     lectures = Lecture.query.filter_by(plan_id=plan_id).all()
     logger.info(f"Returning {len(lectures)} lectures for plan {plan_id}")
     return jsonify([{'id': l.id, 'section': l.section, 'content': l.content, 'completed': l.completed} for l in lectures]), 200
 
 @app.route('/complete_lecture', methods=['POST'])
+@login_required
 def complete_lecture():
     data = request.get_json()
     lecture_id = data.get('lecture_id')
@@ -218,6 +242,9 @@ def complete_lecture():
     if not lecture:
         logger.error(f"Lecture ID {lecture_id} not found")
         return jsonify({'message': '講義不存在'}), 404
+    plan = LearningPlan.query.get(lecture.plan_id)
+    if plan.user_id != session['user_id']:
+        return jsonify({'message': '無權修改此講義'}), 403
     lecture.completed = True
     db.session.commit()
     logger.info(f"Lecture {lecture_id} marked as completed")
