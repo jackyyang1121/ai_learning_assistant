@@ -88,7 +88,7 @@ def generate_learning_plan(form_data):
 """
     try:
         response = openai.chat.completions.create(
-            model="gpt-4-0125-preview",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "你是一個專業的學習計畫生成器。"},
                 {"role": "user", "content": prompt}
@@ -122,7 +122,7 @@ def generate_lecture(plan_id, section):
 """
     try:
         response = openai.chat.completions.create(
-            model="gpt-4-0125-preview",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "你是一個專業的講義生成器。"},
                 {"role": "user", "content": prompt}
