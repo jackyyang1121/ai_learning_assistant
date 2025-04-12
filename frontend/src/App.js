@@ -255,6 +255,8 @@ const LecturePage = ({ planId, planContent, setView }) => {
     const sections = planContent.match(/步驟 \d+：.*?$/gm) || [];
 
     useEffect(() => {
+        console.log('planContent:', planContent);  // 添加日誌
+        console.log('sections:', sections);  // 添加日誌
         const fetchLectures = async () => {
             setLoading(true);
             try {
@@ -262,7 +264,7 @@ const LecturePage = ({ planId, planContent, setView }) => {
                 console.log('Fetched lectures:', response.data);
                 setLectures(response.data || []);
             } catch (error) {
-                toast.error(`獲取講義失敗: ${error.message}`);
+                toast.error('獲取講義失敗');
                 console.error('Fetch lectures error:', error);
             } finally {
                 setLoading(false);
@@ -273,7 +275,6 @@ const LecturePage = ({ planId, planContent, setView }) => {
 
     const handleGenerateLecture = async (section) => {
         setLoading(true);
-        console.log('Generating lecture for section:', section);
         try {
             const response = await apiClient.post('/generate_lecture', { plan_id: planId, section });
             console.log('Generated lecture response:', response.data);
@@ -286,7 +287,7 @@ const LecturePage = ({ planId, planContent, setView }) => {
             setLectures(prevLectures => [...prevLectures, newLecture]);
             toast.success('講義生成成功');
         } catch (error) {
-            toast.error(`生成講義失敗: ${error.message}`);
+            toast.error('生成講義失敗');
             console.error('Generate lecture error:', error);
         } finally {
             setLoading(false);
@@ -301,7 +302,7 @@ const LecturePage = ({ planId, planContent, setView }) => {
             );
             toast.success('講義已標記為完成');
         } catch (error) {
-            toast.error(`標記失敗: ${error.message}`);
+            toast.error('標記失敗');
             console.error('Complete lecture error:', error);
         }
     };
@@ -325,9 +326,6 @@ const LecturePage = ({ planId, planContent, setView }) => {
                 </Card.Header>
                 <Card.Body>
                     {loading && <LoadingSpinner size="lg" className="d-block mx-auto my-4" />}
-                    {sections.length === 0 && (
-                        <Alert variant="warning">無法解析學習計劃中的章節，請檢查計劃內容。</Alert>
-                    )}
                     <Accordion>
                         {sections.map((section, index) => {
                             const lecture = lectures.find(lec => lec.section === section);
@@ -469,7 +467,7 @@ const RegisterPage = ({ setView, handleRegister, loading }) => (
 
 // 主應用組件
 const App = () => {
-    const [view, setView] = useState('login');
+    const [view, setView] = useState('login'); // 預設進入儀表板
     const [plan, setPlan] = useState(null);
     const [progress, setProgress] = useState([]);
     const [authLoading, setAuthLoading] = useState(false);
@@ -483,7 +481,7 @@ const App = () => {
             if (successMessage) toast.success(successMessage);
             return response;
         } catch (error) {
-            toast.error(error.response?.data?.message || `${errorMessagePrefix}失敗: ${error.message}`);
+            toast.error(error.response?.data?.message || `${errorMessagePrefix}失敗`);
             console.error(`${errorMessagePrefix} error:`, error);
             return null;
         } finally {
@@ -555,7 +553,7 @@ const App = () => {
             const response = await apiClient.get('/learning_progress');
             setProgress(response.data || []);
         } catch (error) {
-            toast.error(`獲取進度失敗: ${error.message}`);
+            toast.error('獲取進度失敗');
             setProgress([]);
         } finally {
             setDataLoading(false);
@@ -563,8 +561,8 @@ const App = () => {
     };
 
     useEffect(() => {
-        if (view === 'dashboard') getProgress();
-    }, [view]);
+        getProgress();
+    }, []);
 
     const renderView = () => {
         switch (view) {
