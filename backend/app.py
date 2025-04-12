@@ -61,37 +61,38 @@ def generate_learning_plan(form_data):
     learning_pace = form_data.get('learningPace', '穩步前進')
 
     prompt = f"""
-你是一個 AI 學習助手，任務是為用戶生成一個結構化、個人化的學習計畫。
-用戶的目標是：{goal}
-具體目標：{specific_goal}
-用戶的經驗水平：{experience_level}
-用戶的學習風格：{learning_style}
-用戶的學習動機：{motivation}
-用戶的資源偏好：{resource_preference}
-用戶的語言偏好：{language_preference}
-用戶的學習節奏：{learning_pace}
-用戶每周可用學習時間：{weekly_time} 小時
-若用戶語言選擇中文請使用繁體中文回應。
+    你是一個 AI 學習助手，任務是為用戶生成一個結構化、個人化的學習計畫。
+    用戶的目標是：{goal}
+    具體目標：{specific_goal}
+    用戶的經驗水平：{experience_level}
+    用戶的學習風格：{learning_style}
+    用戶的學習動機：{motivation}
+    用戶的資源偏好：{resource_preference}
+    用戶的語言偏好：{language_preference}
+    用戶的學習節奏：{learning_pace}
+    用戶每周可用學習時間：{weekly_time} 小時
+    若用戶語言選擇中文請使用繁體中文回應。
 
-請根據用戶的經驗水平生成相應深度的學習內容，並適用於任何學習目標，例如：
-- 初學者：從基礎入門開始，例如基本語法、資料分析。
-- 中級：延續初階內容，學習進階技術，例如機器學習。
-- 高階：學習專業級內容，例如深度學習。
+    請根據用戶的經驗水平生成相應深度的學習內容，並適用於任何學習目標，例如：
+    - 初學者：從基礎入門開始，例如基本語法、資料分析。
+    - 中級：延續初階內容，學習進階技術，例如機器學習。
+    - 高階：學習專業級內容，例如深度學習。
 
-請生成一個詳細的學習計畫，包含以下元素：
-1. **概述**：簡要描述學習目標和預期成果。
-2. **分週學習計畫**：根據用戶的每周可用時間和學習節奏，列出每週的學習內容和預估完成時間。
-3. **學習步驟**：列出具體的學習步驟或階段，每個步驟必須以「步驟 [數字]：」開頭，例如「步驟 1：學習 Python 基礎」。每個步驟應包含：
-   - 學習內容
-   - 建議的學習資源（使用 {language_preference}，優先考慮 {resource_preference}，並提供具體鏈接）
-   - 預估完成時間
-4. **評估方法**：建議如何評估學習進展和成果。
+    請生成一個詳細的學習計畫，包含以下元素：
+    1. **概述**：簡要描述學習目標和預期成果。
+    2. **分週學習計畫**：根據用戶的每周可用時間和學習節奏，列出每週的學習內容和預估完成時間。
+    3. **學習步驟**：列出具體的學習步驟或階段，每個步驟必須以「步驟 [數字]：」開頭，例如「步驟 1：學習 Python 基礎」。每個步驟應包含：
+       - 學習內容
+       - 建議的學習資源（使用 {language_preference}，優先考慮 {resource_preference}，並提供具體鏈接）
+       - 預估完成時間
+    4. **評估方法**：建議如何評估學習進展和成果。
 
-**重要**：在「學習步驟」部分，必須嚴格使用「步驟 [數字]：」作為每個步驟的開頭，例如：
-- 步驟 1：學習 Python 基礎
-- 步驟 2：學習函數和模組
-不得使用其他格式（如「1. **內容**：」或其他變體）。
-"""
+    **重要**：在「學習步驟」部分，必須嚴格使用「步驟 [數字]：」作為每個步驟的開頭，例如：
+    - 步驟 1：學習 Python 基礎
+    - 步驟 2：學習函數和模組
+    不得使用其他格式（如「- **步驟 1**：」、「1. **內容**：」或其他變體）。
+    """
+
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -114,11 +115,19 @@ def generate_learning_plan(form_data):
                 step_section = True
                 corrected_plan.append(line)
                 continue
-            if step_section and re.match(r'^\d+\.\s*\*\*.*?\*\*：', line):
-                # 將「1. **內容**：」轉換為「步驟 [數字]：」
-                content = re.sub(r'^\d+\.\s*\*\*(.*?)\*\*：', '', line).strip()
-                corrected_plan.append(f"步驟 {step_counter}：{content}")
-                step_counter += 1
+            if step_section:
+                # 修正「- **步驟 [數字]**：」格式
+                if re.match(r'^- \*\*步驟 \d+\*\*：', line):
+                    content = re.sub(r'^- \*\*步驟 \d+\*\*：\s*', '', line).strip()
+                    corrected_plan.append(f"步驟 {step_counter}：{content}")
+                    step_counter += 1
+                # 修正「[數字]. **內容**：」格式
+                elif re.match(r'^\d+\.\s*\*\*.*?\*\*：', line):
+                    content = re.sub(r'^\d+\.\s*\*\*(.*?)\*\*：', '', line).strip()
+                    corrected_plan.append(f"步驟 {step_counter}：{content}")
+                    step_counter += 1
+                else:
+                    corrected_plan.append(line)
             else:
                 corrected_plan.append(line)
         plan_content = '\n'.join(corrected_plan)
@@ -136,18 +145,18 @@ def generate_lecture(plan_id, section):
         logger.error(f"Plan ID {plan_id} not found")
         return "計畫不存在"
     prompt = f"""
-根據以下學習計畫生成詳細的學習講義：
-{plan.plan}
+    根據以下學習計畫生成詳細的學習講義：
+    {plan.plan}
 
-請針對計畫中的「{section}」部分生成講義內容，包含：
-- 詳細的解釋和範例
-- 程式碼片段（如果適用）
-- 精選的外部資源連結（至少3個高品質資源，如 YouTube 影片、官方文件等）
-- 實踐練習或小測驗
-盡量以免費資源為優先
+    請針對計畫中的「{section}」部分生成講義內容，包含：
+    - 詳細的解釋和範例
+    - 程式碼片段（如果適用）
+    - 精選的外部資源連結（至少3個高品質資源，如 YouTube 影片、官方文件等）
+    - 實踐練習或小測驗
+    盡量以免費資源為優先
 
-請使用繁體中文生成講義。
-"""
+    請使用繁體中文生成講義。
+    """
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
