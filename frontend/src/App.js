@@ -252,11 +252,11 @@ const PlanGenerator = ({ generatePlan, loading }) => {
 const LecturePage = ({ planId, planContent, setView }) => {
     const [lectures, setLectures] = useState([]);
     const [loading, setLoading] = useState(false);
-    const sections = planContent.match(/步驟 \d+：.*?$/gm) || [];
+    const sections = useMemo(() => planContent.match(/步驟 \d+：.*?$/gm) || [], [planContent]); // 使用 useMemo
 
     useEffect(() => {
-        console.log('planContent:', planContent);  // 添加日誌
-        console.log('sections:', sections);  // 添加日誌
+        console.log('planContent:', planContent);
+        console.log('sections:', sections);
         const fetchLectures = async () => {
             setLoading(true);
             try {
@@ -271,7 +271,7 @@ const LecturePage = ({ planId, planContent, setView }) => {
             }
         };
         fetchLectures();
-    }, [planId, planContent, sections]);
+    }, [planId, planContent]);
 
     const handleGenerateLecture = async (section) => {
         setLoading(true);
