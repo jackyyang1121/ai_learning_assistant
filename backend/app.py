@@ -78,15 +78,15 @@ def generate_learning_plan(form_data):
 - 中級：延續初階內容，學習進階技術，例如機器學習。
 - 高階：學習專業級內容，例如深度學習。
 
-
 請生成一個詳細的學習計畫，包含以下元素：
 1. **概述**：簡要描述學習目標和預期成果。
 2. **分週學習計畫**：根據用戶的每周可用時間和學習節奏，列出每週的學習內容和預估完成時間。
-3. **學習步驟**：列出具體的學習步驟或階段，每個步驟應包含：
+3. **學習步驟**：列出具體的學習步驟或階段，每個步驟必須以「步驟 [數字]：」開頭，例如「步驟 1：學習 Python 基礎」。每個步驟應包含：
    - 學習內容
    - 建議的學習資源（使用 {language_preference}，優先考慮 {resource_preference}，並提供具體鏈接）
    - 預估完成時間
 4. **評估方法**：建議如何評估學習進展和成果。
+
 **重要**：在「學習步驟」部分，必須嚴格使用「步驟 [數字]：」作為每個步驟的開頭，例如：
 - 步驟 1：學習 Python 基礎
 - 步驟 2：學習函數和模組
@@ -103,7 +103,27 @@ def generate_learning_plan(form_data):
             temperature=0.6
         )
         plan_content = response.choices[0].message.content.strip()
-        logger.info(f"Generated plan content: {plan_content}")  # 添加日誌
+        
+        # 檢查和修正步驟格式
+        import re
+        corrected_plan = []
+        step_section = False
+        step_counter = 1
+        for line in plan_content.split('\n'):
+            if line.startswith('#### 3. 學習步驟'):
+                step_section = True
+                corrected_plan.append(line)
+                continue
+            if step_section and re.match(r'^\d+\.\s*\*\*.*?\*\*：', line):
+                # 將「1. **內容**：」轉換為「步驟 [數字]：」
+                content = re.sub(r'^\d+\.\s*\*\*(.*?)\*\*：', '', line).strip()
+                corrected_plan.append(f"步驟 {step_counter}：{content}")
+                step_counter += 1
+            else:
+                corrected_plan.append(line)
+        plan_content = '\n'.join(corrected_plan)
+        
+        logger.info(f"Generated plan content: {plan_content}")
         return plan_content
     except Exception as e:
         logger.error(f"OpenAI API failed: {str(e)}")
@@ -139,7 +159,7 @@ def generate_lecture(plan_id, section):
             temperature=0.6
         )
         lecture_content = response.choices[0].message.content.strip()
-        logger.info(f"Generated lecture for plan {plan_id}, section: {section}")  # 添加日誌
+        logger.info(f"Generated lecture for plan {plan_id}, section: {section}")
         return lecture_content
     except Exception as e:
         logger.error(f"OpenAI API failed: {str(e)}")
@@ -203,7 +223,7 @@ def generate_lecture_route():
     if not plan_id or not section:
         logger.error("Missing plan_id or section in request")
         return jsonify({'message': '缺少 plan_id 或 section'}), 400
-    logger.info(f"Generating lecture for plan_id: {plan_id}, section: {section}")  # 添加日誌
+    logger.info(f"Generating lecture for plan_id: {plan_id}, section: {section}")
     lecture_content = generate_lecture(plan_id, section)
     if lecture_content.startswith("生成失敗"):
         return jsonify({'message': lecture_content}), 500
@@ -217,7 +237,7 @@ def generate_lecture_route():
 def get_lectures(plan_id):
     lectures = Lecture.query.filter_by(plan_id=plan_id).all()
     logger.info(f"Returning {len(lectures)} lectures for plan {plan_id}")
-    logger.info(f"Lectures sections: {[l.section for l in lectures]}")  # 添加日誌
+    logger.info(f"Lectures sections: {[l.section for l in lectures]}")
     return jsonify([{'id': l.id, 'section': l.section, 'content': l.content, 'completed': l.completed} for l in lectures]), 200
 
 @app.route('/complete_lecture', methods=['POST'])

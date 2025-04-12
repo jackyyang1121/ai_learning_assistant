@@ -252,7 +252,7 @@ const PlanGenerator = ({ generatePlan, loading }) => {
 const LecturePage = ({ planId, planContent, setView }) => {
     const [lectures, setLectures] = useState([]);
     const [loading, setLoading] = useState(false);
-    const sections = useMemo(() => planContent.match(/步驟 \d+：.*?$/gm) || [], [planContent]); // 使用 useMemo
+    const sections = useMemo(() => planContent.match(/^\d+\.\s*\*\*[^*]+\*\*：/gm) || [], [planContent]);
 
     useEffect(() => {
         console.log('planContent:', planContent);
