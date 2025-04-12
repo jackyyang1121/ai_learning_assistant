@@ -271,7 +271,7 @@ const LecturePage = ({ planId, planContent, setView }) => {
             }
         };
         fetchLectures();
-    }, [planId, planContent]);
+    }, [planId, planContent, sections]);
 
     const handleGenerateLecture = async (section) => {
         setLoading(true);
