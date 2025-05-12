@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import axios from 'axios';   // 引入axios庫，用於發送HTTP請求
+import axios from 'axios';
 
 const App = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [goal, setGoal] = useState('');
-  const [plan, setPlan] = useState('');
-  const [progress, setProgress] = useState([]);
-  const backendUrl = 'https://friendly-invention-4jvw9w69jg74cq69-5000.app.github.dev/';
+    const [view, setView] = useState('login'); // 預設進入儀表板
+    const [plan, setPlan] = useState(null);
+    const [progress, setProgress] = useState([]);
+    const [authLoading, setAuthLoading] = useState(false);
+    const [dataLoading, setDataLoading] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState(null);
 
-  const register = async () => {   //async是非同步函式的關鍵字，讓這個函式可以使用await，await會讓程式等到這個函式執行完畢後再繼續執行下面的程式碼，且只能用在有async的函式裡面
+  const register = async () => {
     console.log('Register data:', { username, password });
     try {
       await axios.post(`${backendUrl}/register`, { username, password }, { withCredentials: true });
@@ -53,54 +53,84 @@ const App = () => {
     }
   };
 
-  const getProgress = async () => {
-    try {
-      const response = await axios.get(`${backendUrl}/learning_progress`, { withCredentials: true });
-      setProgress(response.data);
-    } catch (error) {
-      console.error('Get progress error:', error.message, error.response?.data);
-      alert(`獲取進度失敗: ${error.message}`);
-    }
-  };
+    const getProgress = async () => {
+        setDataLoading(true);
+        try {
+            const response = await apiClient.get('/learning_progress');
+            setProgress(response.data || []);
+        } catch (error) {
+            toast.error('獲取進度失敗');
+            setProgress([]);
+        } finally {
+            setDataLoading(false);
+        }
+    };
 
-  const checkLogin = async () => {
-    try {
-      const response = await axios.get(`${backendUrl}/check_login`, { withCredentials: true });
-      alert(response.data.message);
-    } catch (error) {
-      console.error('Check login error:', error.message, error.response?.data);
-      alert(`未登入: ${error.message}`);
-    }
-  };
+    useEffect(() => {
+        getProgress();
+    }, []);
 
-  return (
-    <div>
-      <h1>AI 學習助手</h1>
-      <input type="text" placeholder="用戶名" onChange={(e) => setUsername(e.target.value)} />
-      <input type="password" placeholder="密碼" onChange={(e) => setPassword(e.target.value)} />
-      <button onClick={register}>註冊</button>
-      <button onClick={login}>登入</button>
-      <button onClick={logout}>登出</button>
-      <button onClick={checkLogin}>檢查登入狀態</button>
-      <input type="text" placeholder="學習目標" onChange={(e) => setGoal(e.target.value)} />
-      <button onClick={generatePlan}>生成計畫</button>
-      <button onClick={getProgress}>查看進度</button>
-      <div>
-        <h2>學習計畫</h2>
-        <p>{plan}</p>
-      </div>
-      <div>
-        <h2>學習進度</h2>
-        {progress.map((item, index) => (
-          <div key={index}>
-            <p>目標：{item.goal}</p>
-            <p>計畫：{item.plan}</p>
-            <p>創建時間：{item.created_at}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+    const renderView = () => {
+        switch (view) {
+            case 'register':
+                return <RegisterPage setView={setView} handleRegister={handleRegister} loading={authLoading} />;
+            case 'lecture':
+                return selectedPlan && (
+                    <LecturePage
+                        planId={selectedPlan.planId}
+                        planContent={selectedPlan.planContent}
+                        setView={setView}
+                    />
+                );
+            case 'dashboard':
+                return (
+                    <DashboardPage
+                        handleLogout={handleLogout}
+                        generatePlan={generatePlan}
+                        getProgress={getProgress}
+                        progress={progress}
+                        plan={plan}
+                        loading={dataLoading}
+                        authLoading={authLoading}
+                        setView={(view, planData) => {
+                            setView(view);
+                            if (planData) setSelectedPlan(planData);
+                        }}
+                    />
+                );
+            case 'login':
+            default:
+                return <LoginPage setView={setView} handleLogin={handleLogin} loading={authLoading} />;
+        }
+    };
+
+    return (
+        <div className="app-container" style={{ backgroundImage: `url(${backgroundImageUrl})` }}>
+            <Toaster />
+            <div className="content-wrapper">
+                <motion.h1
+                    className="main-title text-center mb-4 h2"
+                    initial={{ opacity: 0, y: -30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8 }}
+                >
+                    AI 個人化學習助手
+                </motion.h1>
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={view}
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        transition={{ duration: 0.3 }}
+                        className="motion-div-wrapper"
+                    >
+                        {renderView()}
+                    </motion.div>
+                </AnimatePresence>
+            </div>
+        </div>
+    );
 };
 
 export default App;
