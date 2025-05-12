@@ -47,6 +47,7 @@ class Lecture(db.Model):
 import openai
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai.api_key = OPENAI_API_KEY
+#
 
 # 優化後的學習計畫生成函數
 def generate_learning_plan(form_data):
