@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axios from 'axios';   // 引入axios庫，用於發送HTTP請求
 
 const App = () => {
   const [username, setUsername] = useState('');
@@ -9,7 +9,7 @@ const App = () => {
   const [progress, setProgress] = useState([]);
   const backendUrl = 'https://friendly-invention-4jvw9w69jg74cq69-5000.app.github.dev/';
 
-  const register = async () => {
+  const register = async () => {   //async是非同步函式的關鍵字，讓這個函式可以使用await，await會讓程式等到這個函式執行完畢後再繼續執行下面的程式碼，且只能用在有async的函式裡面
     console.log('Register data:', { username, password });
     try {
       await axios.post(`${backendUrl}/register`, { username, password }, { withCredentials: true });

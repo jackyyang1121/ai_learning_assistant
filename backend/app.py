@@ -39,7 +39,7 @@ def register():
     return jsonify({'message': '註冊成功'}), 201
 
 @app.route('/check_login', methods=['GET'])
-@login_required
+@login_required   #有登入的用戶才能使用
 def check_login():
     print('Check login - Current user:', current_user.username, 'Session:', session.get('_user_id'))
     return jsonify({'message': f'已登入，用戶名：{current_user.username}'}), 200
